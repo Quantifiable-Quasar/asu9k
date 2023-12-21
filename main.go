@@ -12,6 +12,7 @@ import (
 )
 
 // declared here for global scope
+// probably should just pass in the list of docker files as an extra paramater to the processClient func
 var dockerFileDirectory string = "images/"
 var listOfDockerFiles []string
 
@@ -21,37 +22,57 @@ func check(e error) {
 	}
 }
 
-func processClient(connection net.Conn) {
+func processClient(connection net.Conn) int {
 
 	for {
+		for {
+			connection.Write([]byte("\nSelect Operation: \n1. Create Container\n2. View Containers\n3. Admin Console\n4. Exit\n>>"))
+			userSelection, err := bufio.NewReader(connection).ReadString('\n')
+			if err != nil {
+				fmt.Printf("%d: Connection Closed: %v by %s\n", time.Now().Unix(), err, connection.RemoteAddr())
+				break
+			}
 
-		connection.Write([]byte("\nSelect a dockerfile to execute: \n"))
+			if userSelection == "1\n" {
 
-		for i, j := range listOfDockerFiles {
-			connection.Write([]byte(strconv.Itoa(i) + ": " + j + "\n"))
+				connection.Write([]byte("\nSelect a dockerfile to execute: \n>>"))
+
+				for i, j := range listOfDockerFiles {
+					connection.Write([]byte(strconv.Itoa(i) + ": " + j + "\n"))
+				}
+
+				connection.Write([]byte("\n"))
+
+				message, err := bufio.NewReader(connection).ReadString('\n')
+
+				if err != nil {
+					fmt.Printf("%d: Connection Closed: %v by %s\n", time.Now().Unix(), err, connection.RemoteAddr())
+					break
+				}
+
+				userSelection, userSelErr := strconv.Atoi(strings.TrimSuffix(message, "\n"))
+
+				if userSelErr == nil && (userSelection < len(listOfDockerFiles) || userSelection <= 0) {
+					fmt.Println(time.Now().Unix(), ":", listOfDockerFiles[userSelection], "spinning up by remote host", connection.RemoteAddr())
+				} else {
+					connection.Write([]byte("Invalid selection. Please enter an integer off the list above\n"))
+					continue
+				}
+			} else if userSelection == "2\n" {
+				connection.Write([]byte("This menu is still under development\n"))
+			} else if userSelection == "3\n" {
+				connection.Write([]byte("This menu is still under development\n"))
+				fmt.Printf("%d: Connection Closed by %s\n", time.Now().Unix(), connection.RemoteAddr())
+			} else if userSelection == "4\n" {
+				connection.Close()
+				return 0
+			} else {
+				connection.Write([]byte("Invalid selection. Please enter one of the numbers from the list above\n"))
+			}
 		}
-
-		connection.Write([]byte("\n"))
-
-		message, err := bufio.NewReader(connection).ReadString('\n')
-
-		if err != nil {
-			fmt.Printf("%d: Connection Closed: %v by %s\n", time.Now().Unix(), err, connection.RemoteAddr())
-			break
-		}
-
-		userSelection, userSelErr := strconv.Atoi(strings.TrimSuffix(message, "\n"))
-
-		if userSelErr == nil && (userSelection < len(listOfDockerFiles) || userSelection <= 0) {
-			fmt.Println(time.Now().Unix(), ":", listOfDockerFiles[userSelection], "spinning up by remote host", connection.RemoteAddr())
-		} else {
-			connection.Write([]byte("Invalid selection. Please enter an integer off the list above\n"))
-			continue
-		}
-
 	}
-
 	connection.Close()
+	return 0
 }
 
 func main() {
