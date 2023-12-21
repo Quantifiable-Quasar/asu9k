@@ -14,3 +14,4 @@ todo:
 - create menu for all of this (1: help 2: create containers 3: view containers/uptime 4: admin login)
 
 also rn all this is logged to the stdout. im thinking about creating a log file but idk yet
+this is a test push
