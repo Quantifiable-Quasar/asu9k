@@ -1,5 +1,5 @@
 todo:
-- spin up docker image based on docker file
+- [ ] spin up docker image based on docker file
 - getopts and variable stuff out
 - paramterize login 
 - paramterize ports (ie ssh is on 2243 for the server)
