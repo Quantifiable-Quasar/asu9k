@@ -7,7 +7,7 @@ todo:
     - [ ] allow for admin to view all containers and their uptime
     - [ ] allow for admin to stop  one container
     - [ ] allow for admin to stop all containers at once
-- [ ] track container uptime 
+- [x] track container uptime 
 - [ ] create help menu (for connected users)
 - [x] automatically kill containers that have an uptime over x hours (function)
 - [ ] allow users to extend their uptime
