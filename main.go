@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -9,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/docker/docker/client"
 )
 
 // declared here for global scope
@@ -101,8 +104,48 @@ func main() {
 
 /* from here on out will be testing for docker, expect mistates and poorly written code below */
 
-func getDockerTime() {
+// Gets uptime from a given containter
+func getContainerUptime(containerID string) (time.Duration, error) {
 
-	// empty for now
+	cli, err := client.NewEnvClient()
+	check(err)
 
+	containerInspect, err := cli.ContainerInspect(context.Background(), containerID)
+	check(err)
+
+	createdTime, err := time.Parse(time.RFC3339Nano, containerInspect.Created)
+	check(err)
+
+	uptime := time.Since(createdTime)
+	return uptime, nil
+}
+
+func uptimeLimit(containerID string, timeLimit time.Duration) error {
+	uptime, err := getContainerUptime(containerID)
+	if err != nil {
+		return err
+	}
+
+	if uptime > timeLimit {
+		fmt.Printf("Container %s has exceeded the time limit. Killing...\n", containerID)
+
+		cli, err := client.NewEnvClient()
+		if err != nil {
+			return err
+		}
+
+		// Set a timeout for killing the container (i will try and impliment later)
+		//timeout := 10 * time.Second
+
+		err = cli.ContainerKill(context.Background(), containerID, "SIGKILL")
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Container %s killed.\n", containerID)
+	} else {
+		fmt.Printf("Container %s uptime is within the limit.\n", containerID)
+	}
+
+	return nil
 }
