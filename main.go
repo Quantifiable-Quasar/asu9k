@@ -98,3 +98,11 @@ func main() {
 		go processClient(connection)
 	}
 }
+
+/* from here on out will be testing for docker, expect mistates and poorly written code below */
+
+func getDockerTime() {
+
+	// empty for now
+
+}
