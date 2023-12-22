@@ -13,4 +13,4 @@ todo:
 - [ ] allow users to extend their uptime
 - [x] create menu for all of this (1: help 2: create containers 3: view containers/uptime 4: admin login)
 
-also rn all this is logged to the stdout. im thinking about creating a log file but idk yet
+also rn all this is logged to the stdout. im thinking about creating a log file but idk yet.
