@@ -149,3 +149,43 @@ func uptimeLimit(containerID string, timeLimit time.Duration) error {
 
 	return nil
 }
+
+/*
+   For allowing users to extend time, each user will have to have their
+   own timeLimit varible, not sure how this can be handeled (possibly via database or by container)
+*/
+
+// The function below is proably not functional, but no real way to test until we have sample docker containters
+/*
+func extendContainerTimeLimit(containerID string, additionalTime time.Duration) error {
+	cli, err := client.NewEnvClient()
+	if err != nil {
+		return err
+	}
+
+	// Get the current container information
+	containerInspect, err := cli.ContainerInspect(context.Background(), containerID)
+	if err != nil {
+		return err
+	}
+
+	// Calculate the new timeout by adding the additional time to the current uptime
+	createdTime, err := time.Parse(time.RFC3339Nano, containerInspect.Created)
+	if err != nil {
+		return err
+	}
+	currentUptime := time.Since(createdTime)
+	newTimeout := currentUptime + additionalTime
+
+	// Update the container's timeout
+	timeout := int(newTimeout.Seconds())
+	containerInspect, err = cli.ContainerUpdate(context.Background(), containerID, types.ContainerUpdateConfig{BlkioWeight: 0, CPUShares: 0, CgroupParent: "", OomKillDisable: false, Timeout: &timeout})
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Container %s time limit extended by %s.\n", containerID, additionalTime.String())
+	return nil
+
+}
+*/
