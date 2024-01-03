@@ -1,17 +1,25 @@
 package main
 
 import (
+	"archive/tar"
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	natting "github.com/docker/go-connections/nat"
+	"github.com/docker/docker/api/types/container"
+	network "github.com/docker/docker/api/types/network"
 )
 
 // declared here for global scope
@@ -25,38 +33,176 @@ func check(e error) {
 	}
 }
 
+func buildImage(client *client.Client, tags []string, dockerfile string) error {
+	ctx := context.Background()
+
+	buf := new(bytes.Buffer)
+	tw := tar.NewWriter(buf)
+	defer tw.Close()
+
+	dockerFileReader, err := os.Open(dockerfile)
+	if err != nil {
+		return err
+	}
+
+	readDockerFile, err := ioutil.ReadAll(dockerFileReader)
+	if err != nil {
+		return err
+	}
+
+	tarHeader := &tar.Header{
+		Name: dockerfile,
+		Size: int64(len(readDockerFile)),
+	}
+
+	err = tw.WriteHeader(tarHeader)
+	if err != nil {
+		return err
+	}
+
+	_, err = tw.Write(readDockerFile)
+	if err != nil {
+		return err
+	}
+
+	dockerFileTarReader := bytes.NewReader(buf.Bytes())
+
+	buildOptions := types.ImageBuildOptions{
+		Context:    dockerFileTarReader,
+		Dockerfile: dockerfile,
+		Remove:     true,
+		Tags:       tags,
+	}
+
+	imageBuildResponse, err := client.ImageBuild(
+		ctx,
+		dockerFileTarReader,
+		buildOptions,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	defer imageBuildResponse.Body.Close()
+
+	//maybe switch this up to be an output of the function not print
+	_, err = io.Copy(os.Stdout, imageBuildResponse.Body)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func runContainer(client *client.Client, imagename string containername string, port string, inputEnv []string) error {
+	
+		newport, err := natting.NewPort("tcp", port)
+		if err != nil {
+				fmt.Println("Unable to create docker port")
+				return err
+		}
+
+		hostConfig := &container.HostConfig{
+				PortBindings: natting.PortMap{
+						newport: []natting.PortBinding{
+								{
+										HostIP: "0.0.0.0",
+										HostPort: port,
+								},
+						},
+				},
+				RestartPolicy: container.RestartPolicy{
+						Name: "always",
+				},
+				LogConfig: container.LogConfig{
+						Type: "json-file",
+						Config: map[string]string{},
+				},
+		}
+
+		networkConfig := &network.NetworkingConfig{
+				EndpointsConfig: map[string]*network.EndpointSettings{},
+		}
+		gatewayConfig := &network.EndpointSettings{
+				Gateway: "gatewayname",
+		}
+		networkConfig.EndpointsConfig["bridge"] = gatewayConfig
+
+		exposedPorts := map[natting.Port}struct{}{
+				newport: struct{}{},
+		}
+
+		config := &container.Config{
+				Image: 		imagename,
+				Env:		inputEnv,
+				ExposedPorts: exposedPorts,
+				Hostname: 	fmt.Sprintf("%s-hostnameexample", imagename),
+		}
+
+		cont, err := client.ContainerCreate(
+				context.Background(),
+				config,
+				hostConfig,
+				networkConfig,
+				containername,
+		)
+
+		if err != nil {
+				log.Println(err)
+				return err
+		}
+
+}
+
 func processClient(connection net.Conn) int {
 
 	for {
 		for {
-			connection.Write([]byte("\nSelect Operation: \n1. Create Container\n2. View Containers\n3. Admin Console\n4. Exit\n>>"))
+			connection.Write([]byte("Select Operation: \n1. Create Container\n2. View Containers\n3. Admin Console\n4. Exit\n>> "))
 			userSelection, err := bufio.NewReader(connection).ReadString('\n')
 			if err != nil {
 				fmt.Printf("%d: Connection Closed: %v by %s\n", time.Now().Unix(), err, connection.RemoteAddr())
-				break
+				return 0
 			}
 
 			if userSelection == "1\n" {
 
-				connection.Write([]byte("\nSelect a dockerfile to execute: \n>>"))
+				connection.Write([]byte("\nSelect a dockerfile to execute: \n"))
 
 				for i, j := range listOfDockerFiles {
 					connection.Write([]byte(strconv.Itoa(i) + ": " + j + "\n"))
 				}
 
-				connection.Write([]byte("\n"))
+				connection.Write([]byte("\n>> "))
 
 				message, err := bufio.NewReader(connection).ReadString('\n')
 
 				if err != nil {
 					fmt.Printf("%d: Connection Closed: %v by %s\n", time.Now().Unix(), err, connection.RemoteAddr())
-					break
+					return 0
 				}
 
 				userSelection, userSelErr := strconv.Atoi(strings.TrimSuffix(message, "\n"))
 
 				if userSelErr == nil && (userSelection < len(listOfDockerFiles) || userSelection <= 0) {
 					fmt.Println(time.Now().Unix(), ":", listOfDockerFiles[userSelection], "spinning up by remote host", connection.RemoteAddr())
+
+					client, err := client.NewEnvClient()
+					if err != nil {
+						log.Fatalf("Unable to create docker client: %s", err)
+					}
+
+					tags := []string{"tags"}
+					dockerfile := dockerFileDirectory + listOfDockerFiles[userSelection]
+					err = buildImage(client, tags, dockerfile)
+					if err != nil {
+						log.Println(err)
+						continue
+					}
+
+					connection.Write([]byte("Finished building image from " + listOfDockerFiles[userSelection] + "\n"))
 				} else {
 					connection.Write([]byte("Invalid selection. Please enter an integer off the list above\n"))
 					continue
@@ -67,6 +213,7 @@ func processClient(connection net.Conn) int {
 				connection.Write([]byte("This menu is still under development\n"))
 				fmt.Printf("%d: Connection Closed by %s\n", time.Now().Unix(), connection.RemoteAddr())
 			} else if userSelection == "4\n" {
+				fmt.Printf("%d: Connection closed by %s\n", time.Now().Unix(), err, connection.RemoteAddr())
 				connection.Close()
 				return 0
 			} else {
