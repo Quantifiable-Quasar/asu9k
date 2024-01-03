@@ -6,7 +6,6 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 
 	"github.com/docker/docker/api/types"
@@ -76,6 +75,8 @@ func BuildImage(client *client.Client, tags []string, dockerfile string) error {
 
 	return nil
 }
+
+/*
 func main() {
 	client, err := client.NewEnvClient()
 	if err != nil {
@@ -89,3 +90,4 @@ func main() {
 		log.Println(err)
 	}
 }
+*/

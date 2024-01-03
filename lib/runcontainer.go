@@ -1,4 +1,4 @@
-package main
+package lib
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	natting "github.com/docker/go-connections/nat"
 )
 
-func runContainer(client *client.Client, imagename string, containername string, port string, inputEnv []string) error {
+func RunContainer(client *client.Client, imagename string, containername string, port string, inputEnv []string) error {
 	// Define a PORT opening
 	newport, err := natting.NewPort("tcp", port)
 	if err != nil {
@@ -86,6 +86,7 @@ func runContainer(client *client.Client, imagename string, containername string,
 	return nil
 }
 
+/*
 func main() {
 	cli, err := client.NewEnvClient()
 	if err != nil {
@@ -101,3 +102,4 @@ func main() {
 		log.Println(err)
 	}
 }
+*/
