@@ -14,3 +14,8 @@ todo:
 - [x] create menu for all of this (1: help 2: create containers 3: view containers/uptime 4: admin login)
 
 also rn all this is logged to the stdout. im thinking about creating a log file but idk yet.
+
+if there is a docker api version error just export the DOCKER_API_VERSION= to valid version
+
+if there is a error Create container with PortBindings (error: “cannot use type nat.PortMap as type nat.PortMap”) then deleting the folder “$GOPATH/src/github.com/docker/docker/vendor/github.com/docker/go-connections”
+https://forums.docker.com/t/docker-sdk-go-create-container-with-portbindings-error-cannot-use-type-nat-portmap-as-type-nat-portmap/83959
